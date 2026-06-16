@@ -77,6 +77,7 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
 
     class Factory(private val repository: AuthRepository) : ViewModelProvider.Factory {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            @Suppress("UNCHECKED_CAST")
             return AuthViewModel(repository) as T
         }
     }

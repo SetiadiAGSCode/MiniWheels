@@ -30,9 +30,6 @@ class DiecastViewModel(
     private val _uploadStatus = MutableStateFlow<NetworkResult<Diecast>?>(null)
     val uploadStatus: StateFlow<NetworkResult<Diecast>?> = _uploadStatus.asStateFlow()
 
-    private val _deleteStatus = MutableStateFlow<NetworkResult<Unit>?>(null)
-    val deleteStatus: StateFlow<NetworkResult<Unit>?> = _deleteStatus.asStateFlow()
-
     init {
         observeUserAndFetchData()
     }
@@ -131,18 +128,12 @@ class DiecastViewModel(
 
     fun deleteDiecast(id: String) {
         viewModelScope.launch {
-            _deleteStatus.value = NetworkResult.Loading()
-            val result = repository.deleteDiecast(id)
-            _deleteStatus.value = result
+            repository.deleteDiecast(id)
         }
     }
 
     fun resetUploadStatus() {
         _uploadStatus.value = null
-    }
-    
-    fun resetDeleteStatus() {
-        _deleteStatus.value = null
     }
 
     fun updateDiecast(
