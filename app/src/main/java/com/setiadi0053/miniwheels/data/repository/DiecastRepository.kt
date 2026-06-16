@@ -12,9 +12,13 @@ class DiecastRepository(
     private val db: FirebaseFirestore
 ) {
 
-    fun getDiecasts(): Flow<NetworkResult<List<Diecast>>> = callbackFlow {
+    /**
+     * Point 1c: Fetch only data belonging to the logged-in user.
+     */
+    fun getDiecasts(userId: String): Flow<NetworkResult<List<Diecast>>> = callbackFlow {
         trySend(NetworkResult.Loading())
         val subscription = db.collection("diecasts")
+            .whereEqualTo("ownerId", userId) // Filter by ownerId
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(NetworkResult.Error(error.message ?: "Unknown Firestore Error"))
@@ -35,7 +39,7 @@ class DiecastRepository(
         brand: String,
         scale: String,
         year: Int,
-        imageSource: String, // This will be the Base64 string
+        imageSource: String,
         ownerId: String
     ): NetworkResult<Diecast> {
         return try {
@@ -44,7 +48,7 @@ class DiecastRepository(
                 "brand" to brand,
                 "scale" to scale,
                 "releaseYear" to year,
-                "imageUrl" to imageSource, // Reusing field name for compatibility
+                "imageUrl" to imageSource,
                 "ownerId" to ownerId
             )
             val docRef = db.collection("diecasts").add(diecastMap).await()
@@ -64,7 +68,30 @@ class DiecastRepository(
         }
     }
 
-    // Helper data class for Firestore mapping
+    suspend fun updateDiecast(
+        id: String,
+        name: String,
+        brand: String,
+        scale: String,
+        year: Int,
+        imageSource: String? = null
+    ): NetworkResult<Unit> {
+        return try {
+            val updates = mutableMapOf<String, Any>(
+                "name" to name,
+                "brand" to brand,
+                "scale" to scale,
+                "releaseYear" to year
+            )
+            imageSource?.let { updates["imageUrl"] = it }
+            
+            db.collection("diecasts").document(id).update(updates).await()
+            NetworkResult.Success(Unit)
+        } catch (e: Exception) {
+            NetworkResult.Error(e.message ?: "Failed to update diecast")
+        }
+    }
+
     private data class DiecastMap(
         val name: String = "",
         val brand: String = "",

@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">MiniWheels</string>
+    <string name="dashboard_title">MiniWheels Dashboard</string>
+    <string name="profile_title">User Profile</string>
+    <string name="add_diecast_title">Add Diecast</string>
+    <string name="edit_diecast_title">Edit Diecast</string>
+    <string name="welcome_message">Welcome to MiniWheels!</string>
+    <string name="login_instruction">Please log in via the profile icon in the top right to manage your collection.</string>
+    <string name="no_collection">No collection yet.</string>
+    <string name="retry">Retry</string>
+    <string name="delete_confirm_title">Delete Confirmation</string>
+    <string name="delete_confirm_msg">Are you sure you want to delete this diecast?</string>
+    <string name="yes">Yes</string>
+    <string name="cancel">Cancel</string>
+    <string name="save">Save</string>
+    <string name="update">Update</string>
+    <string name="diecast_name">Diecast Name</string>
+    <string name="brand">Brand</string>
+    <string name="scale">Scale (e.g., 64)</string>
+    <string name="year">Release Year</string>
+    <string name="select_image">Select Image</string>
+    <string name="image_too_large">Image too large</string>
+    <string name="offline_msg">Internet connection lost. Please check your network.</string>
+</resources>

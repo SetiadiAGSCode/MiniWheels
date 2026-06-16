@@ -13,9 +13,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.google.firebase.firestore.FirebaseFirestore
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
 import com.setiadi0053.miniwheels.data.remote.RetrofitClient
@@ -27,6 +29,7 @@ import com.setiadi0053.miniwheels.ui.MainViewModel
 import com.setiadi0053.miniwheels.ui.navigation.Screen
 import com.setiadi0053.miniwheels.ui.screens.AddDiecastScreen
 import com.setiadi0053.miniwheels.ui.screens.DashboardScreen
+import com.setiadi0053.miniwheels.ui.screens.EditDiecastScreen
 import com.setiadi0053.miniwheels.ui.screens.LoginScreen
 import com.setiadi0053.miniwheels.ui.screens.ProfileScreen
 import com.setiadi0053.miniwheels.ui.theme.MiniWheelsTheme
@@ -133,6 +136,21 @@ fun AppNavigation(
         composable(Screen.AddDiecast.route) {
             if (isLoggedIn) {
                 AddDiecastScreen(navController, diecastViewModel)
+            } else {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Profile.route) {
+                        popUpTo(Screen.Dashboard.route)
+                    }
+                }
+            }
+        }
+        composable(
+            route = Screen.EditDiecast.route,
+            arguments = listOf(navArgument("diecastId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val diecastId = backStackEntry.arguments?.getString("diecastId") ?: ""
+            if (isLoggedIn) {
+                EditDiecastScreen(navController, diecastViewModel, diecastId)
             } else {
                 LaunchedEffect(Unit) {
                     navController.navigate(Screen.Profile.route) {

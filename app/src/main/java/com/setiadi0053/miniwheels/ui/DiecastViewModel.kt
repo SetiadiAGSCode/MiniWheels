@@ -14,6 +14,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
@@ -33,17 +34,41 @@ class DiecastViewModel(
     val deleteStatus: StateFlow<NetworkResult<Unit>?> = _deleteStatus.asStateFlow()
 
     init {
-        fetchDiecasts()
+        observeUserAndFetchData()
     }
 
-    fun fetchDiecasts() {
+    /**
+     * Point 1c: Observe the logged-in user and fetch only their data.
+     */
+    private fun observeUserAndFetchData() {
         viewModelScope.launch {
-            repository.getDiecasts().collect {
-                _diecasts.value = it
+            userPrefs.userToken.collect { token ->
+                if (token != null) {
+                    // Use the token (UID) to fetch data
+                    fetchDiecasts(token)
+                } else {
+                    _diecasts.value = NetworkResult.Error("Not authenticated")
+                }
             }
         }
     }
 
+    fun fetchDiecasts(userId: String? = null) {
+        viewModelScope.launch {
+            val id = userId ?: userPrefs.userToken.first()
+            if (id != null) {
+                repository.getDiecasts(id).collect {
+                    _diecasts.value = it
+                }
+            } else {
+                _diecasts.value = NetworkResult.Error("Not authenticated")
+            }
+        }
+    }
+
+    /**
+     * Point 3b: Save data using the actual user ID from preferences.
+     */
     fun addDiecast(
         name: String,
         brand: String,
@@ -56,31 +81,32 @@ class DiecastViewModel(
             _uploadStatus.value = NetworkResult.Loading()
             
             try {
-                // 1. Compress and convert to Base64 on an IO thread
+                val userId = userPrefs.userToken.first()
+                if (userId == null) {
+                    _uploadStatus.value = NetworkResult.Error("User not logged in")
+                    return@launch
+                }
+
                 val base64Image = withContext(Dispatchers.IO) {
                     compressAndEncodeToBase64(imageBytes)
                 }
 
-                if (base64Image.length > 1024 * 1024) { // 1MB limit check
-                     _uploadStatus.value = NetworkResult.Error("Image too large even after compression")
+                if (base64Image.length > 1024 * 1024) {
+                     _uploadStatus.value = NetworkResult.Error("Image too large")
                      return@launch
                 }
-
-                val ownerId = "placeholder_user"
                 
-                // 2. Save document with Base64 string directly to Firestore
-                val result = repository.addDiecast(name, brand, scale, year, base64Image, ownerId)
+                // Use actual userId instead of placeholder
+                val result = repository.addDiecast(name, brand, scale, year, base64Image, userId)
                 _uploadStatus.value = result
             } catch (e: Exception) {
-                _uploadStatus.value = NetworkResult.Error("Processing error: ${e.message}")
+                _uploadStatus.value = NetworkResult.Error("Error: ${e.message}")
             }
         }
     }
 
     private fun compressAndEncodeToBase64(imageBytes: ByteArray): String {
         val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-        
-        // Scale down if the image is very large to save space/bandwidth
         val maxSize = 800 
         val width = bitmap.width
         val height = bitmap.height
@@ -97,9 +123,7 @@ class DiecastViewModel(
         }
         
         val resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-        
         val outputStream = ByteArrayOutputStream()
-        // High compression (60%) to stay well under the 1MB Firestore limit
         resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
         val compressedBytes = outputStream.toByteArray()
         
@@ -120,6 +144,43 @@ class DiecastViewModel(
     
     fun resetDeleteStatus() {
         _deleteStatus.value = null
+    }
+
+    fun updateDiecast(
+        id: String,
+        name: String,
+        brand: String,
+        scale: String,
+        year: Int,
+        imageBytes: ByteArray? = null
+    ) {
+        viewModelScope.launch {
+            _uploadStatus.value = NetworkResult.Loading()
+            try {
+                var base64Image: String? = null
+                if (imageBytes != null) {
+                    base64Image = withContext(Dispatchers.IO) {
+                        compressAndEncodeToBase64(imageBytes)
+                    }
+                    if (base64Image.length > 1024 * 1024) {
+                        _uploadStatus.value = NetworkResult.Error("Image too large")
+                        return@launch
+                    }
+                }
+
+                val result = repository.updateDiecast(id, name, brand, scale, year, base64Image)
+                if (result is NetworkResult.Success) {
+                    // Using uploadStatus for feedback
+                    _uploadStatus.value = NetworkResult.Success(
+                        Diecast(id, name, brand, scale, year, base64Image ?: "", "")
+                    )
+                } else {
+                    _uploadStatus.value = NetworkResult.Error(result.message ?: "Update failed")
+                }
+            } catch (e: Exception) {
+                _uploadStatus.value = NetworkResult.Error("Update error: ${e.message}")
+            }
+        }
     }
 
     class Factory(
