@@ -1,17 +1,15 @@
 package com.setiadi0053.miniwheels.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -35,6 +33,31 @@ fun DashboardScreen(
     viewModel: DiecastViewModel
 ) {
     val diecastsState by viewModel.diecasts.collectAsState()
+    var showDeleteDialog by remember { mutableStateOf<Diecast?>(null) }
+
+    // Dialog Konfirmasi (Point 4b)
+    if (showDeleteDialog != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = null },
+            title = { Text("Konfirmasi Hapus") },
+            text = { Text("Apakah Anda yakin ingin menghapus diecast ini dari koleksi Anda?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog?.let { viewModel.deleteDiecast(it.id) }
+                        showDeleteDialog = null
+                    }
+                ) {
+                    Text("Ya")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = null }) {
+                    Text("Batal")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -73,7 +96,10 @@ fun DashboardScreen(
                             verticalArrangement = Arrangement.spacedBy(16.dp)
                         ) {
                             items(list) { diecast ->
-                                DiecastItem(diecast = diecast)
+                                DiecastItem(
+                                    diecast = diecast,
+                                    onDeleteClick = { showDeleteDialog = diecast }
+                                )
                             }
                         }
                     }
@@ -95,19 +121,35 @@ fun DashboardScreen(
 }
 
 @Composable
-fun DiecastItem(diecast: Diecast) {
+fun DiecastItem(
+    diecast: Diecast,
+    onDeleteClick: () -> Unit
+) {
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
-            AsyncImage(
-                model = diecast.imageUrl,
-                contentDescription = diecast.name,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(120.dp),
-                contentScale = ContentScale.Crop
-            )
+            Box {
+                AsyncImage(
+                    model = diecast.imageUrl,
+                    contentDescription = diecast.name,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentScale = ContentScale.Crop
+                )
+                // Delete Button (Point 4a)
+                IconButton(
+                    onClick = onDeleteClick,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = diecast.name, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 Text(text = diecast.brand, fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
@@ -124,10 +166,9 @@ fun DiecastItem(diecast: Diecast) {
 @Composable
 fun DashboardScreenPreview() {
     MiniWheelsTheme {
-        // Mocking behavior for preview is hard without a mock viewmodel, 
-        // but we can show the item
         DiecastItem(
-            diecast = Diecast("1", "Skyline GT-R", "Hot Wheels", "64", 2023, "", "user1")
+            diecast = Diecast("1", "Skyline GT-R", "Hot Wheels", "64", 2023, "", "user1"),
+            onDeleteClick = {}
         )
     }
 }

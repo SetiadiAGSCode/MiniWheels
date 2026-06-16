@@ -27,6 +27,9 @@ class DiecastViewModel(
     private val _uploadStatus = MutableStateFlow<NetworkResult<Diecast>?>(null)
     val uploadStatus: StateFlow<NetworkResult<Diecast>?> = _uploadStatus.asStateFlow()
 
+    private val _deleteStatus = MutableStateFlow<NetworkResult<Unit>?>(null)
+    val deleteStatus: StateFlow<NetworkResult<Unit>?> = _deleteStatus.asStateFlow()
+
     init {
         fetchDiecasts()
     }
@@ -76,8 +79,28 @@ class DiecastViewModel(
         }
     }
 
+    fun deleteDiecast(id: String) {
+        viewModelScope.launch {
+            val token = userPrefs.userToken.first()
+            if (token != null) {
+                repository.deleteDiecast(token, id).collect { result ->
+                    _deleteStatus.value = result
+                    if (result is NetworkResult.Success) {
+                        // Point 4c: Auto-vanishing list - update local state immediately
+                        val currentList = (_diecasts.value as? NetworkResult.Success)?.data ?: emptyList()
+                        _diecasts.value = NetworkResult.Success(currentList.filter { it.id != id })
+                    }
+                }
+            }
+        }
+    }
+
     fun resetUploadStatus() {
         _uploadStatus.value = null
+    }
+    
+    fun resetDeleteStatus() {
+        _deleteStatus.value = null
     }
 
     class Factory(
