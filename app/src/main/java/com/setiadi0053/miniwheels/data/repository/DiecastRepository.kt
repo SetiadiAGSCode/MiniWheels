@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class DiecastRepository(
-    private val db: FirebaseFirestore
+    private val db: FirebaseFirestore,
 ) {
 
     /**

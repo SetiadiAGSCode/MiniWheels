@@ -50,7 +50,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MiniWheelsTheme {
                 val mainViewModel: MainViewModel = viewModel(
-                    factory = MainViewModel.Factory(userPrefs, connectivityObserver)
+                    factory = MainViewModel.Factory(userPrefs, connectivityObserver),
                 )
                 val authViewModel: AuthViewModel = viewModel(
                     factory = AuthViewModel.Factory(authRepository)
@@ -99,13 +99,12 @@ fun AppNavigation(
         composable(Screen.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
-                onLoginSuccess = {
-                    diecastViewModel.fetchDiecasts() // Load data after login
-                    navController.navigate(Screen.Dashboard.route) {
-                        popUpTo(Screen.Login.route) { inclusive = true }
-                    }
+            ) {
+                diecastViewModel.fetchDiecasts() // Load data after login
+                navController.navigate(Screen.Dashboard.route) {
+                    popUpTo(Screen.Login.route) { inclusive = true }
                 }
-            )
+            }
         }
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController, diecastViewModel, isLoggedIn)

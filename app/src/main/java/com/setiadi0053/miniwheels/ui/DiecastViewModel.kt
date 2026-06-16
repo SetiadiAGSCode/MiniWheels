@@ -21,7 +21,7 @@ import java.io.ByteArrayOutputStream
 
 class DiecastViewModel(
     private val repository: DiecastRepository,
-    private val userPrefs: UserPreferencesRepository
+    private val userPrefs: UserPreferencesRepository,
 ) : ViewModel() {
 
     private val _diecasts = MutableStateFlow<NetworkResult<List<Diecast>>>(NetworkResult.Loading())
@@ -75,7 +75,6 @@ class DiecastViewModel(
         scale: String,
         year: Int,
         imageBytes: ByteArray,
-        imageName: String
     ) {
         viewModelScope.launch {
             _uploadStatus.value = NetworkResult.Loading()
@@ -91,7 +90,7 @@ class DiecastViewModel(
                     compressAndEncodeToBase64(imageBytes)
                 }
 
-                if (base64Image.length > 1024 * 1024) {
+                if (base64Image.length > (1024 * 1024)) {
                      _uploadStatus.value = NetworkResult.Error("Image too large")
                      return@launch
                 }

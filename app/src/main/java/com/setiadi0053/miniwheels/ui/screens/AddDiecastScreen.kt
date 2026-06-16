@@ -153,8 +153,7 @@ fun AddDiecastScreen(
                                 brand = brand,
                                 scale = scale,
                                 year = year.toIntOrNull() ?: 0,
-                                imageBytes = bytes,
-                                imageName = "diecast_image.jpg"
+                                imageBytes = bytes
                             )
                         }
                     },

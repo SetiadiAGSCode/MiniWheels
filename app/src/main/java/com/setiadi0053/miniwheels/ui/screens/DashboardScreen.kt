@@ -23,7 +23,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.setiadi0053.miniwheels.R
 import com.setiadi0053.miniwheels.data.model.Diecast
@@ -37,7 +36,7 @@ import com.setiadi0053.miniwheels.util.NetworkResult
 fun DashboardScreen(
     navController: NavController,
     viewModel: DiecastViewModel,
-    isLoggedIn: Boolean
+    isLoggedIn: Boolean,
 ) {
     val diecastsState by viewModel.diecasts.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<Diecast?>(null) }
@@ -171,7 +170,7 @@ fun DiecastItem(
                 val base64String = diecast.imageUrl.substringAfter(",")
                 val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
                 BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-            } catch (e: Exception) {
+            } catch (_: Exception) {
                 diecast.imageUrl
             }
         } else {
