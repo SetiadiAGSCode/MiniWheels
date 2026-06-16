@@ -61,7 +61,7 @@ class MainActivity : ComponentActivity() {
                     Box(modifier = Modifier.padding(innerPadding)) {
                         if (isLoggedIn != null) {
                             AppNavigation(
-                                startDestination = if (isLoggedIn == true) Screen.Dashboard.route else Screen.Login.route,
+                                isLoggedIn = isLoggedIn == true,
                                 authViewModel = authViewModel,
                                 diecastViewModel = diecastViewModel,
                                 userPrefs = userPrefs
@@ -84,13 +84,13 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun AppNavigation(
-    startDestination: String,
+    isLoggedIn: Boolean,
     authViewModel: AuthViewModel,
     diecastViewModel: DiecastViewModel,
     userPrefs: UserPreferencesRepository
 ) {
     val navController = rememberNavController()
-    NavHost(navController = navController, startDestination = startDestination) {
+    NavHost(navController = navController, startDestination = Screen.Dashboard.route) {
         composable(Screen.Login.route) {
             LoginScreen(
                 viewModel = authViewModel,
@@ -103,21 +103,41 @@ fun AppNavigation(
             )
         }
         composable(Screen.Dashboard.route) {
-            DashboardScreen(navController, diecastViewModel)
+            DashboardScreen(navController, diecastViewModel, isLoggedIn)
         }
         composable(Screen.Profile.route) {
-            ProfileScreen(
-                authViewModel = authViewModel,
-                userPreferencesRepository = userPrefs,
-                onLogout = {
-                    navController.navigate(Screen.Login.route) {
-                        popUpTo(0) { inclusive = true }
+            if (isLoggedIn) {
+                ProfileScreen(
+                    authViewModel = authViewModel,
+                    userPreferencesRepository = userPrefs,
+                    onLogout = {
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(0) { inclusive = true }
+                        }
                     }
-                }
-            )
+                )
+            } else {
+                LoginScreen(
+                    viewModel = authViewModel,
+                    onLoginSuccess = {
+                        diecastViewModel.fetchDiecasts()
+                        navController.navigate(Screen.Dashboard.route) {
+                            popUpTo(Screen.Profile.route) { inclusive = true }
+                        }
+                    }
+                )
+            }
         }
         composable(Screen.AddDiecast.route) {
-            AddDiecastScreen(navController, diecastViewModel)
+            if (isLoggedIn) {
+                AddDiecastScreen(navController, diecastViewModel)
+            } else {
+                LaunchedEffect(Unit) {
+                    navController.navigate(Screen.Profile.route) {
+                        popUpTo(Screen.Dashboard.route)
+                    }
+                }
+            }
         }
     }
 }

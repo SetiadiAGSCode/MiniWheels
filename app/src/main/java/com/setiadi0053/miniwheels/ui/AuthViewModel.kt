@@ -37,13 +37,15 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
             .build()
 
         viewModelScope.launch {
+            _loginState.value = NetworkResult.Loading()
             try {
                 val result = credentialManager.getCredential(
                     request = request,
                     context = context
                 )
                 val credential = result.credential
-                if (credential is GoogleIdTokenCredential) {
+                
+                if (credential.type == GoogleIdTokenCredential.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL) {
                     val googleIdTokenCredential = GoogleIdTokenCredential.createFrom(credential.data)
                     repository.loginWithToken(
                         token = googleIdTokenCredential.idToken,
@@ -53,11 +55,13 @@ class AuthViewModel(private val repository: AuthRepository) : ViewModel() {
                     ).collect {
                         _loginState.value = it
                     }
+                } else {
+                    _loginState.value = NetworkResult.Error("Unexpected credential type: ${credential.type}")
                 }
             } catch (e: GetCredentialException) {
-                _loginState.value = NetworkResult.Error(e.message ?: "Sign in failed")
+                _loginState.value = NetworkResult.Error("Sign in failed: ${e.message}")
             } catch (e: Exception) {
-                _loginState.value = NetworkResult.Error(e.message ?: "Unknown error")
+                _loginState.value = NetworkResult.Error("An error occurred: ${e.message}")
             }
         }
     }

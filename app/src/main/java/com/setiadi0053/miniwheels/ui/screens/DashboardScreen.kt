@@ -30,7 +30,8 @@ import com.setiadi0053.miniwheels.util.NetworkResult
 @Composable
 fun DashboardScreen(
     navController: NavController,
-    viewModel: DiecastViewModel
+    viewModel: DiecastViewModel,
+    isLoggedIn: Boolean
 ) {
     val diecastsState by viewModel.diecasts.collectAsState()
     var showDeleteDialog by remember { mutableStateOf<Diecast?>(null) }
@@ -71,47 +72,76 @@ fun DashboardScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { navController.navigate(Screen.AddDiecast.route) }) {
-                Icon(Icons.Default.Add, contentDescription = "Add Diecast")
+            if (isLoggedIn) {
+                FloatingActionButton(onClick = { navController.navigate(Screen.AddDiecast.route) }) {
+                    Icon(Icons.Default.Add, contentDescription = "Add Diecast")
+                }
             }
         }
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).fillMaxSize()) {
-            when (diecastsState) {
-                is NetworkResult.Loading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            if (!isLoggedIn) {
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Person,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f)
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Selamat datang di MiniWheels!",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Silakan masuk melalui ikon profil di pojok kanan atas untuk melihat dan mengelola koleksi diecast Anda.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
-                is NetworkResult.Success -> {
-                    val list = (diecastsState as NetworkResult.Success<List<Diecast>>).data ?: emptyList()
-                    if (list.isEmpty()) {
-                        Text(
-                            text = "Belum ada koleksi.",
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    } else {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            contentPadding = PaddingValues(16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            items(list) { diecast ->
-                                DiecastItem(
-                                    diecast = diecast,
-                                    onDeleteClick = { showDeleteDialog = diecast }
-                                )
+            } else {
+                when (diecastsState) {
+                    is NetworkResult.Loading -> {
+                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                    }
+                    is NetworkResult.Success -> {
+                        val list = (diecastsState as NetworkResult.Success<List<Diecast>>).data ?: emptyList()
+                        if (list.isEmpty()) {
+                            Text(
+                                text = "Belum ada koleksi.",
+                                modifier = Modifier.align(Alignment.Center)
+                            )
+                        } else {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(2),
+                                contentPadding = PaddingValues(16.dp),
+                                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                items(list) { diecast ->
+                                    DiecastItem(
+                                        diecast = diecast,
+                                        onDeleteClick = { showDeleteDialog = diecast }
+                                    )
+                                }
                             }
                         }
                     }
-                }
-                is NetworkResult.Error -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = (diecastsState as NetworkResult.Error).message ?: "Error load data")
-                        Button(onClick = { viewModel.fetchDiecasts() }) {
-                            Text("Retry")
+                    is NetworkResult.Error -> {
+                        Column(
+                            modifier = Modifier.align(Alignment.Center),
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            Text(text = (diecastsState as NetworkResult.Error).message ?: "Error load data")
+                            Button(onClick = { viewModel.fetchDiecasts() }) {
+                                Text("Retry")
+                            }
                         }
                     }
                 }

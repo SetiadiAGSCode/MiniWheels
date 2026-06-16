@@ -31,14 +31,26 @@ class DiecastViewModel(
     val deleteStatus: StateFlow<NetworkResult<Unit>?> = _deleteStatus.asStateFlow()
 
     init {
-        fetchDiecasts()
+        observeToken()
     }
 
-    fun fetchDiecasts() {
+    private fun observeToken() {
         viewModelScope.launch {
-            val token = userPrefs.userToken.first()
-            if (token != null) {
-                repository.getDiecasts(token).collect {
+            userPrefs.userToken.collect { token ->
+                if (token != null) {
+                    fetchDiecasts(token)
+                } else {
+                    _diecasts.value = NetworkResult.Error("Not authenticated")
+                }
+            }
+        }
+    }
+
+    fun fetchDiecasts(token: String? = null) {
+        viewModelScope.launch {
+            val authToken = token ?: userPrefs.userToken.first()
+            if (authToken != null) {
+                repository.getDiecasts(authToken).collect {
                     _diecasts.value = it
                 }
             } else {
