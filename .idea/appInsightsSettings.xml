@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.setiadi0053.miniwheels" />
+                  <option name="mobileSdkAppId" value="1:620258030980:android:60939a2e91908bf3bed9d1" />
+                  <option name="projectId" value="miniwheels-521b7" />
+                  <option name="projectNumber" value="620258030980" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

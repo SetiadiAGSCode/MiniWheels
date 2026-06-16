@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "620258030980",
+    "project_id": "miniwheels-521b7",
+    "storage_bucket": "miniwheels-521b7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:620258030980:android:60939a2e91908bf3bed9d1",
+        "android_client_info": {
+          "package_name": "com.setiadi0053.miniwheels"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCSBSBIa6TN74TFjwO2kWAkDBtvO9hKCIQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
