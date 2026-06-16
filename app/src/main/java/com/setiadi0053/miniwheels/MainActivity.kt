@@ -16,6 +16,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.firestore.FirebaseFirestore
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
 import com.setiadi0053.miniwheels.data.remote.RetrofitClient
 import com.setiadi0053.miniwheels.data.repository.AuthRepository
@@ -40,7 +41,8 @@ class MainActivity : ComponentActivity() {
         val userPrefs = UserPreferencesRepository(applicationContext)
         val connectivityObserver = NetworkConnectivityObserver(applicationContext)
         val authRepository = AuthRepository(RetrofitClient.apiService, userPrefs)
-        val diecastRepository = DiecastRepository(RetrofitClient.apiService)
+        val firestore = FirebaseFirestore.getInstance()
+        val diecastRepository = DiecastRepository(firestore)
 
         setContent {
             MiniWheelsTheme {

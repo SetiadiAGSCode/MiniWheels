@@ -1,5 +1,7 @@
 package com.setiadi0053.miniwheels.ui.screens
 
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -155,13 +157,27 @@ fun DiecastItem(
     diecast: Diecast,
     onDeleteClick: () -> Unit
 ) {
+    val imageModel = remember(diecast.imageUrl) {
+        if (diecast.imageUrl.startsWith("data:image")) {
+            try {
+                val base64String = diecast.imageUrl.substringAfter(",")
+                val imageBytes = Base64.decode(base64String, Base64.DEFAULT)
+                BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
+            } catch (e: Exception) {
+                diecast.imageUrl
+            }
+        } else {
+            diecast.imageUrl
+        }
+    }
+
     Card(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             Box {
                 AsyncImage(
-                    model = diecast.imageUrl,
+                    model = imageModel,
                     contentDescription = diecast.name,
                     modifier = Modifier
                         .fillMaxWidth()

@@ -1,61 +1,78 @@
 package com.setiadi0053.miniwheels.data.repository
 
+import com.google.firebase.firestore.FirebaseFirestore
 import com.setiadi0053.miniwheels.data.model.Diecast
-import com.setiadi0053.miniwheels.data.remote.ApiService
 import com.setiadi0053.miniwheels.util.NetworkResult
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import okhttp3.MultipartBody
-import okhttp3.RequestBody
+import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.tasks.await
 
-class DiecastRepository(private val apiService: ApiService) {
+class DiecastRepository(
+    private val db: FirebaseFirestore
+) {
 
-    fun getDiecasts(token: String): Flow<NetworkResult<List<Diecast>>> = flow {
-        emit(NetworkResult.Loading())
-        try {
-            val response = apiService.getDiecasts("Bearer $token")
-            if (response.isSuccessful) {
-                emit(NetworkResult.Success(response.body() ?: emptyList()))
-            } else {
-                emit(NetworkResult.Error(response.message()))
+    fun getDiecasts(): Flow<NetworkResult<List<Diecast>>> = callbackFlow {
+        trySend(NetworkResult.Loading())
+        val subscription = db.collection("diecasts")
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(NetworkResult.Error(error.message ?: "Unknown Firestore Error"))
+                    return@addSnapshotListener
+                }
+                if (snapshot != null) {
+                    val items = snapshot.documents.mapNotNull { doc ->
+                        doc.toObject(DiecastMap::class.java)?.toDiecast(doc.id)
+                    }
+                    trySend(NetworkResult.Success(items))
+                }
             }
+        awaitClose { subscription.remove() }
+    }
+
+    suspend fun addDiecast(
+        name: String,
+        brand: String,
+        scale: String,
+        year: Int,
+        imageSource: String, // This will be the Base64 string
+        ownerId: String
+    ): NetworkResult<Diecast> {
+        return try {
+            val diecastMap = hashMapOf(
+                "name" to name,
+                "brand" to brand,
+                "scale" to scale,
+                "releaseYear" to year,
+                "imageUrl" to imageSource, // Reusing field name for compatibility
+                "ownerId" to ownerId
+            )
+            val docRef = db.collection("diecasts").add(diecastMap).await()
+            val newDiecast = Diecast(docRef.id, name, brand, scale, year, imageSource, ownerId)
+            NetworkResult.Success(newDiecast)
         } catch (e: Exception) {
-            emit(NetworkResult.Error(e.message ?: "Unknown Error"))
+            NetworkResult.Error(e.message ?: "Failed to add diecast")
         }
     }
 
-    fun addDiecast(
-        token: String,
-        name: RequestBody,
-        brand: RequestBody,
-        scale: RequestBody,
-        year: RequestBody,
-        image: MultipartBody.Part
-    ): Flow<NetworkResult<Diecast>> = flow {
-        emit(NetworkResult.Loading())
-        try {
-            val response = apiService.addDiecast("Bearer $token", name, brand, scale, year, image)
-            if (response.isSuccessful && response.body() != null) {
-                emit(NetworkResult.Success(response.body()!!))
-            } else {
-                emit(NetworkResult.Error(response.message()))
-            }
+    suspend fun deleteDiecast(id: String): NetworkResult<Unit> {
+        return try {
+            db.collection("diecasts").document(id).delete().await()
+            NetworkResult.Success(Unit)
         } catch (e: Exception) {
-            emit(NetworkResult.Error(e.message ?: "Unknown Error"))
+            NetworkResult.Error(e.message ?: "Failed to delete diecast")
         }
     }
 
-    fun deleteDiecast(token: String, id: String): Flow<NetworkResult<Unit>> = flow {
-        emit(NetworkResult.Loading())
-        try {
-            val response = apiService.deleteDiecast("Bearer $token", id)
-            if (response.isSuccessful) {
-                emit(NetworkResult.Success(Unit))
-            } else {
-                emit(NetworkResult.Error(response.message()))
-            }
-        } catch (e: Exception) {
-            emit(NetworkResult.Error(e.message ?: "Unknown Error"))
-        }
+    // Helper data class for Firestore mapping
+    private data class DiecastMap(
+        val name: String = "",
+        val brand: String = "",
+        val scale: String = "",
+        val releaseYear: Int = 0,
+        val imageUrl: String = "",
+        val ownerId: String = ""
+    ) {
+        fun toDiecast(id: String) = Diecast(id, name, brand, scale, releaseYear, imageUrl, ownerId)
     }
 }
