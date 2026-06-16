@@ -13,14 +13,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
 import com.setiadi0053.miniwheels.data.remote.RetrofitClient
 import com.setiadi0053.miniwheels.data.repository.AuthRepository
+import com.setiadi0053.miniwheels.data.repository.DiecastRepository
 import com.setiadi0053.miniwheels.ui.AuthViewModel
+import com.setiadi0053.miniwheels.ui.DiecastViewModel
 import com.setiadi0053.miniwheels.ui.MainViewModel
 import com.setiadi0053.miniwheels.ui.navigation.Screen
 import com.setiadi0053.miniwheels.ui.screens.AddDiecastScreen
@@ -39,6 +40,7 @@ class MainActivity : ComponentActivity() {
         val userPrefs = UserPreferencesRepository(applicationContext)
         val connectivityObserver = NetworkConnectivityObserver(applicationContext)
         val authRepository = AuthRepository(RetrofitClient.apiService, userPrefs)
+        val diecastRepository = DiecastRepository(RetrofitClient.apiService)
 
         setContent {
             MiniWheelsTheme {
@@ -47,6 +49,9 @@ class MainActivity : ComponentActivity() {
                 )
                 val authViewModel: AuthViewModel = viewModel(
                     factory = AuthViewModel.Factory(authRepository)
+                )
+                val diecastViewModel: DiecastViewModel = viewModel(
+                    factory = DiecastViewModel.Factory(diecastRepository, userPrefs)
                 )
                 
                 val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
@@ -58,6 +63,7 @@ class MainActivity : ComponentActivity() {
                             AppNavigation(
                                 startDestination = if (isLoggedIn == true) Screen.Dashboard.route else Screen.Login.route,
                                 authViewModel = authViewModel,
+                                diecastViewModel = diecastViewModel,
                                 userPrefs = userPrefs
                             )
                         } else {
@@ -80,6 +86,7 @@ class MainActivity : ComponentActivity() {
 fun AppNavigation(
     startDestination: String,
     authViewModel: AuthViewModel,
+    diecastViewModel: DiecastViewModel,
     userPrefs: UserPreferencesRepository
 ) {
     val navController = rememberNavController()
@@ -88,6 +95,7 @@ fun AppNavigation(
             LoginScreen(
                 viewModel = authViewModel,
                 onLoginSuccess = {
+                    diecastViewModel.fetchDiecasts() // Load data after login
                     navController.navigate(Screen.Dashboard.route) {
                         popUpTo(Screen.Login.route) { inclusive = true }
                     }
@@ -95,8 +103,7 @@ fun AppNavigation(
             )
         }
         composable(Screen.Dashboard.route) {
-            // Passing navController to Dashboard so it can navigate to Profile or Add
-            DashboardScreen(navController)
+            DashboardScreen(navController, diecastViewModel)
         }
         composable(Screen.Profile.route) {
             ProfileScreen(
@@ -110,7 +117,7 @@ fun AppNavigation(
             )
         }
         composable(Screen.AddDiecast.route) {
-            AddDiecastScreen(navController)
+            AddDiecastScreen(navController, diecastViewModel)
         }
     }
 }
