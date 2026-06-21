@@ -28,4 +28,16 @@ interface ApiService {
         @Header("Authorization") token: String,
         @Path("id") id: String
     ): Response<Unit>
+
+    @Multipart
+    @PUT("diecasts/{id}")
+    suspend fun updateDiecast(
+        @Header("Authorization") token: String,
+        @Path("id") id: String,
+        @Part("name") name: RequestBody,
+        @Part("brand") brand: RequestBody,
+        @Part("scale") scale: RequestBody,
+        @Part("releaseYear") year: RequestBody,
+        @Part image: MultipartBody.Part? = null
+    ): Response<Unit>
 }

@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
 import com.setiadi0053.miniwheels.data.model.Diecast
 import com.setiadi0053.miniwheels.data.repository.DiecastRepository
+import com.setiadi0053.miniwheels.util.ImageUtils
 import com.setiadi0053.miniwheels.util.NetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -84,7 +85,7 @@ class DiecastViewModel(
                 }
 
                 val base64Image = withContext(Dispatchers.IO) {
-                    compressAndEncodeToBase64(imageBytes)
+                    ImageUtils.compressAndEncodeToBase64(imageBytes)
                 }
 
                 if (base64Image.length > (1024 * 1024)) {
@@ -99,31 +100,6 @@ class DiecastViewModel(
                 _uploadStatus.value = NetworkResult.Error("Error: ${e.message}")
             }
         }
-    }
-
-    private fun compressAndEncodeToBase64(imageBytes: ByteArray): String {
-        val bitmap = BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.size)
-        val maxSize = 800 
-        val width = bitmap.width
-        val height = bitmap.height
-        val ratio = width.toFloat() / height.toFloat()
-        
-        val newWidth: Int
-        val newHeight: Int
-        if (width > height) {
-            newWidth = maxSize
-            newHeight = (maxSize / ratio).toInt()
-        } else {
-            newHeight = maxSize
-            newWidth = (maxSize * ratio).toInt()
-        }
-        
-        val resizedBitmap = Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
-        val outputStream = ByteArrayOutputStream()
-        resizedBitmap.compress(Bitmap.CompressFormat.JPEG, 60, outputStream)
-        val compressedBytes = outputStream.toByteArray()
-        
-        return "data:image/jpeg;base64," + Base64.encodeToString(compressedBytes, Base64.DEFAULT)
     }
 
     fun deleteDiecast(id: String) {
@@ -150,19 +126,23 @@ class DiecastViewModel(
                 var base64Image: String? = null
                 if (imageBytes != null) {
                     base64Image = withContext(Dispatchers.IO) {
-                        compressAndEncodeToBase64(imageBytes)
+                        ImageUtils.compressAndEncodeToBase64(imageBytes)
                     }
-                    if (base64Image.length > 1024 * 1024) {
+                    if (base64Image!!.length > 1024 * 1024) {
                         _uploadStatus.value = NetworkResult.Error("Image too large")
                         return@launch
                     }
                 }
 
-                val result = repository.updateDiecast(id, name, brand, scale, year, base64Image)
+                val userId = userPrefs.userToken.first() ?: return@launch
+                
+                val result = repository.updateDiecast(
+                    id, name, brand, scale, year, base64Image, userId
+                )
                 if (result is NetworkResult.Success) {
                     // Using uploadStatus for feedback
                     _uploadStatus.value = NetworkResult.Success(
-                        Diecast(id, name, brand, scale, year, base64Image ?: "", "")
+                        Diecast(id, name, brand, scale, year, base64Image ?: "", userId)
                     )
                 } else {
                     _uploadStatus.value = NetworkResult.Error(result.message ?: "Update failed")

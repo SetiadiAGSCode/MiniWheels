@@ -108,17 +108,32 @@ class DiecastRepository(
         brand: String,
         scale: String,
         year: Int,
-        imageSource: String? = null
+        imageSource: String? = null,
+        ownerId: String // Need ownerId (token) for auth
     ): NetworkResult<Unit> {
-        // Implementation for Update via REST API
-        // For now, updating local and assuming API success for Point 3b
         return try {
-            // Simulating API update
-            // val response = apiService.updateDiecast(...)
+            val nameRB = name.toRequestBody("text/plain".toMediaTypeOrNull())
+            val brandRB = brand.toRequestBody("text/plain".toMediaTypeOrNull())
+            val scaleRB = scale.toRequestBody("text/plain".toMediaTypeOrNull())
+            val yearRB = year.toString().toRequestBody("text/plain".toMediaTypeOrNull())
             
-            // Update local Room database to reflect changes immediately (Offline-first)
-            // Note: In a full implementation, you'd fetch the entity first or have a partial update
-            NetworkResult.Success(Unit)
+            val imagePart = imageSource?.let {
+                MultipartBody.Part.createFormData(
+                    "image", "diecast_update.jpg", 
+                    it.toRequestBody("image/jpeg".toMediaTypeOrNull())
+                )
+            }
+
+            val response = apiService.updateDiecast(ownerId, id, nameRB, brandRB, scaleRB, yearRB, imagePart)
+            
+            if (response.isSuccessful) {
+                // Update local Room database
+                // In a real scenario, we might want to fetch the latest or update partially
+                // For simplicity, we just trigger a refresh later or update if we had the full entity
+                NetworkResult.Success(Unit)
+            } else {
+                NetworkResult.Error("Update API Error: ${response.message()}")
+            }
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Failed to update")
         }
