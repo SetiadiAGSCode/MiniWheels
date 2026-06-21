@@ -18,7 +18,6 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.google.firebase.firestore.FirebaseFirestore
 import com.setiadi0053.miniwheels.data.local.AppDatabase
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
 import com.setiadi0053.miniwheels.data.remote.RetrofitClient
@@ -54,7 +53,7 @@ class MainActivity : ComponentActivity() {
                     factory = MainViewModel.Factory(userPrefs, connectivityObserver),
                 )
                 val authViewModel: AuthViewModel = viewModel(
-                    factory = AuthViewModel.Factory(authRepository)
+                    factory = AuthViewModel.Factory(authRepository),
                 )
                 val diecastViewModel: DiecastViewModel = viewModel(
                     factory = DiecastViewModel.Factory(diecastRepository, userPrefs)
@@ -114,13 +113,12 @@ fun AppNavigation(
             if (isLoggedIn) {
                 ProfileScreen(
                     authViewModel = authViewModel,
-                    userPreferencesRepository = userPrefs,
-                    onLogout = {
-                        navController.navigate(Screen.Dashboard.route) {
-                            popUpTo(0) { inclusive = true }
-                        }
+                    userPreferencesRepository = userPrefs
+                ) {
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(0) { inclusive = true }
                     }
-                )
+                }
             } else {
                 LoginScreen(
                     viewModel = authViewModel,

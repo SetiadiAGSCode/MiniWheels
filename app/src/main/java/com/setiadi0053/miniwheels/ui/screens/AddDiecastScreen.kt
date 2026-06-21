@@ -54,7 +54,7 @@ import com.setiadi0053.miniwheels.util.NetworkResult
 @Composable
 fun AddDiecastScreen(
     navController: NavController,
-    viewModel: DiecastViewModel
+    viewModel: DiecastViewModel,
 ) {
     val context = LocalContext.current
     var name by remember { mutableStateOf("") }
@@ -74,8 +74,8 @@ fun AddDiecastScreen(
     // Sanity Check (Point 3b)
     val isFormValid by remember {
         derivedStateOf {
-            name.isNotBlank() && brand.isNotBlank() && scale.isNotBlank() && 
-            year.isNotBlank() && imageUri != null
+            (name.isNotBlank() && brand.isNotBlank() && scale.isNotBlank() && 
+            year.isNotBlank() && imageUri != null)
         }
     }
 
@@ -171,8 +171,7 @@ fun AddDiecastScreen(
             } else {
                 Button(
                     onClick = {
-                        val bytes = context.contentResolver.openInputStream(imageUri!!)?.readBytes()
-                        if (bytes != null) {
+                        context.contentResolver.openInputStream(imageUri!!)?.readBytes()?.let { bytes ->
                             viewModel.addDiecast(
                                 name = name,
                                 brand = brand,

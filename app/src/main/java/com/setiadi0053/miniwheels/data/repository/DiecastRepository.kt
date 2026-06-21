@@ -6,40 +6,41 @@ import com.setiadi0053.miniwheels.data.local.asExternalModel
 import com.setiadi0053.miniwheels.data.model.Diecast
 import com.setiadi0053.miniwheels.data.remote.ApiService
 import com.setiadi0053.miniwheels.util.NetworkResult
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.MultipartBody
-import okhttp3.RequestBody.Companion.toRequestBody
 
 class DiecastRepository(
     private val apiService: ApiService,
     private val diecastDao: DiecastDao
 ) {
+    private val firestore = FirebaseFirestore.getInstance()
+    private val collection = firestore.collection("diecasts")
 
     /**
-     * Point 3a: Combined REST API with Room (Offline-first)
+     * Point 3a: Combined Firestore with Room (Offline-first)
      */
     fun getDiecasts(userId: String): Flow<NetworkResult<List<Diecast>>> = flow {
         emit(NetworkResult.Loading())
         
-        // Emit local data immediately from Room (Offline-first)
-        val initialData = diecastDao.getDiecasts(userId).map { entities ->
-            NetworkResult.Success(entities.map { it.asExternalModel() })
-        }
-        // We emit the current Room content first to show something to the user
-        // emitAll(initialData) // Note: emitAll is terminal-ish if the flow doesn't end. 
-        // Better to use a simpler approach or collect once.
-        
         try {
-            val response = apiService.getDiecasts(userId) 
-            if (response.isSuccessful) {
-                val networkData = response.body() ?: emptyList()
-                diecastDao.clearAll(userId)
-                diecastDao.insertDiecasts(networkData.map { it.asEntity() })
+            val snapshot = collection.whereEqualTo("ownerId", userId).get().await()
+            val networkData = snapshot.documents.map { doc ->
+                Diecast(
+                    id = doc.id,
+                    name = doc.getString("name") ?: "",
+                    brand = doc.getString("brand") ?: "",
+                    scale = doc.getString("scale") ?: "",
+                    releaseYear = doc.getLong("releaseYear")?.toInt() ?: 0,
+                    imageUrl = doc.getString("imageUrl") ?: "",
+                    ownerId = doc.getString("ownerId") ?: ""
+                )
             }
+            diecastDao.clearAll(userId)
+            diecastDao.insertDiecasts(networkData.map { it.asEntity() })
         } catch (_: Exception) {
             // Network error - we just rely on local data
         }
@@ -55,33 +56,17 @@ class DiecastRepository(
         brand: String,
         scale: String,
         year: Int,
-        imageSource: String, // This is Base64 from ViewModel
+        imageSource: String, // This is Base64
         ownerId: String
     ): NetworkResult<Diecast> {
         return try {
-            // For Point 2d: Sending data via REST API
-            // Converting fields to RequestBody
-            val nameRB = name.toRequestBody("text/plain".toMediaTypeOrNull())
-            val brandRB = brand.toRequestBody("text/plain".toMediaTypeOrNull())
-            val scaleRB = scale.toRequestBody("text/plain".toMediaTypeOrNull())
-            val yearRB = year.toString().toRequestBody("text/plain".toMediaTypeOrNull())
+            val docRef = collection.document()
+            val diecast = Diecast(docRef.id, name, brand, scale, year, imageSource, ownerId)
             
-            // Image handling: If the API expects Multipart, we'd convert Base64 back to bytes
-            // Simplified for this example: assuming imageSource is the Base64 string
-            val imagePart = MultipartBody.Part.createFormData(
-                "image", "diecast.jpg", 
-                imageSource.toRequestBody("image/jpeg".toMediaTypeOrNull())
-            )
-
-            val response = apiService.addDiecast(ownerId, nameRB, brandRB, scaleRB, yearRB, imagePart)
+            docRef.set(diecast).await()
             
-            if (response.isSuccessful && response.body() != null) {
-                val result = response.body()!!
-                diecastDao.insertDiecasts(listOf(result.asEntity()))
-                NetworkResult.Success(result)
-            } else {
-                NetworkResult.Error("API Error: ${response.message()}")
-            }
+            diecastDao.insertDiecasts(listOf(diecast.asEntity()))
+            NetworkResult.Success(diecast)
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Failed to add diecast")
         }
@@ -89,14 +74,9 @@ class DiecastRepository(
 
     suspend fun deleteDiecast(id: String): NetworkResult<Unit> {
         return try {
-            // In a real app, we need the token/auth
-            val response = apiService.deleteDiecast("dummy_token", id)
-            if (response.isSuccessful) {
-                diecastDao.deleteDiecast(id)
-                NetworkResult.Success(Unit)
-            } else {
-                NetworkResult.Error("Delete failed")
-            }
+            collection.document(id).delete().await()
+            diecastDao.deleteDiecast(id)
+            NetworkResult.Success(Unit)
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Failed to delete diecast")
         }
@@ -109,31 +89,28 @@ class DiecastRepository(
         scale: String,
         year: Int,
         imageSource: String? = null,
-        ownerId: String // Need ownerId (token) for auth
+        ownerId: String
     ): NetworkResult<Unit> {
         return try {
-            val nameRB = name.toRequestBody("text/plain".toMediaTypeOrNull())
-            val brandRB = brand.toRequestBody("text/plain".toMediaTypeOrNull())
-            val scaleRB = scale.toRequestBody("text/plain".toMediaTypeOrNull())
-            val yearRB = year.toString().toRequestBody("text/plain".toMediaTypeOrNull())
-            
-            val imagePart = imageSource?.let {
-                MultipartBody.Part.createFormData(
-                    "image", "diecast_update.jpg", 
-                    it.toRequestBody("image/jpeg".toMediaTypeOrNull())
-                )
-            }
+            val updates = mutableMapOf<String, Any>(
+                "name" to name,
+                "brand" to brand,
+                "scale" to scale,
+                "releaseYear" to year,
+                "ownerId" to ownerId
+            )
+            imageSource?.let { updates["imageUrl"] = it }
 
-            val response = apiService.updateDiecast(ownerId, id, nameRB, brandRB, scaleRB, yearRB, imagePart)
+            collection.document(id).update(updates).await()
             
-            if (response.isSuccessful) {
-                // Update local Room database
-                // In a real scenario, we might want to fetch the latest or update partially
-                // For simplicity, we just trigger a refresh later or update if we had the full entity
-                NetworkResult.Success(Unit)
-            } else {
-                NetworkResult.Error("Update API Error: ${response.message()}")
-            }
+            // Note: In a real app we'd update Room here too
+            // For now, let the refresh logic handle it or update manually
+            val updatedDiecast = Diecast(
+                id, name, brand, scale, year, imageSource ?: "", ownerId
+            )
+            diecastDao.insertDiecasts(listOf(updatedDiecast.asEntity()))
+            
+            NetworkResult.Success(Unit)
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Failed to update")
         }

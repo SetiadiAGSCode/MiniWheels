@@ -9,7 +9,7 @@ import retrofit2.http.*
 interface ApiService {
     @GET("diecasts")
     suspend fun getDiecasts(
-        @Header("Authorization") token: String
+        @Header("Authorization") token: String,
     ): Response<List<Diecast>>
 
     @Multipart
@@ -26,7 +26,7 @@ interface ApiService {
     @DELETE("diecasts/{id}")
     suspend fun deleteDiecast(
         @Header("Authorization") token: String,
-        @Path("id") id: String
+        @Path("id") id: String,
     ): Response<Unit>
 
     @Multipart
