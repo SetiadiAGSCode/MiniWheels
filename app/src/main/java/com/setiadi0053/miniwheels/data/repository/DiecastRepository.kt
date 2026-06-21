@@ -74,8 +74,13 @@ class DiecastRepository(
 
     suspend fun deleteDiecast(id: String): NetworkResult<Unit> {
         return try {
-            collection.document(id).delete().await()
+            // 1. Hapus dari database lokal dulu agar UI langsung terupdate
             diecastDao.deleteDiecast(id)
+
+            // 2. Panggil delete Firestore TANPA .await() jika ingin sinkronisasi otomatis di latar belakang
+            // Atau tetap gunakan .await() tapi letakkan SETELAH penghapusan lokal.
+            collection.document(id).delete()
+
             NetworkResult.Success(Unit)
         } catch (e: Exception) {
             NetworkResult.Error(e.message ?: "Failed to delete diecast")
