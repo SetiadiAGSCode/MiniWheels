@@ -114,7 +114,7 @@ class DiecastViewModel(
         brand: String,
         scale: String,
         year: Int,
-        imageBytes: ByteArray? = null
+        imageBytes: ByteArray? = null,
     ) {
         viewModelScope.launch {
             _uploadStatus.value = NetworkResult.Loading()
@@ -124,7 +124,7 @@ class DiecastViewModel(
                     base64Image = withContext(Dispatchers.IO) {
                         ImageUtils.compressAndEncodeToBase64(imageBytes)
                     }
-                    if (base64Image!!.length > 1024 * 1024) {
+                    if (base64Image.length > (1024 * 1024)) {
                         _uploadStatus.value = NetworkResult.Error("Image too large")
                         return@launch
                     }
@@ -133,7 +133,7 @@ class DiecastViewModel(
                 val userId = userPrefs.userToken.first() ?: return@launch
                 
                 val result = repository.updateDiecast(
-                    id, name, brand, scale, year, base64Image, userId
+                    id, name, brand, scale, year, base64Image, userId,
                 )
                 if (result is NetworkResult.Success) {
                     // Using uploadStatus for feedback

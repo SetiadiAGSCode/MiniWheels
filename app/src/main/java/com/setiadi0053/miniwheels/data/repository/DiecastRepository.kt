@@ -4,7 +4,6 @@ import com.setiadi0053.miniwheels.data.local.DiecastDao
 import com.setiadi0053.miniwheels.data.local.asEntity
 import com.setiadi0053.miniwheels.data.local.asExternalModel
 import com.setiadi0053.miniwheels.data.model.Diecast
-import com.setiadi0053.miniwheels.data.remote.ApiService
 import com.setiadi0053.miniwheels.util.NetworkResult
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
@@ -14,7 +13,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 class DiecastRepository(
-    private val apiService: ApiService,
     private val diecastDao: DiecastDao
 ) {
     private val firestore = FirebaseFirestore.getInstance()

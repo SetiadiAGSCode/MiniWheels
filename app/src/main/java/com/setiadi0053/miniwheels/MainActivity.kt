@@ -20,7 +20,6 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.setiadi0053.miniwheels.data.local.AppDatabase
 import com.setiadi0053.miniwheels.data.local.UserPreferencesRepository
-import com.setiadi0053.miniwheels.data.remote.RetrofitClient
 import com.setiadi0053.miniwheels.data.repository.AuthRepository
 import com.setiadi0053.miniwheels.data.repository.DiecastRepository
 import com.setiadi0053.miniwheels.ui.AuthViewModel
@@ -43,9 +42,9 @@ class MainActivity : ComponentActivity() {
         
         val userPrefs = UserPreferencesRepository(applicationContext)
         val connectivityObserver = NetworkConnectivityObserver(applicationContext)
-        val authRepository = AuthRepository(RetrofitClient.apiService, userPrefs)
+        val authRepository = AuthRepository(userPrefs)
         val database = AppDatabase.getDatabase(applicationContext)
-        val diecastRepository = DiecastRepository(RetrofitClient.apiService, database.diecastDao())
+        val diecastRepository = DiecastRepository(database.diecastDao())
 
         setContent {
             MiniWheelsTheme {
@@ -56,7 +55,7 @@ class MainActivity : ComponentActivity() {
                     factory = AuthViewModel.Factory(authRepository),
                 )
                 val diecastViewModel: DiecastViewModel = viewModel(
-                    factory = DiecastViewModel.Factory(diecastRepository, userPrefs)
+                    factory = DiecastViewModel.Factory(diecastRepository, userPrefs),
                 )
                 
                 val isLoggedIn by mainViewModel.isLoggedIn.collectAsState()
@@ -122,13 +121,12 @@ fun AppNavigation(
             } else {
                 LoginScreen(
                     viewModel = authViewModel,
-                    onLoginSuccess = {
-                        diecastViewModel.fetchDiecasts()
-                        navController.navigate(Screen.Dashboard.route) {
-                            popUpTo(Screen.Profile.route) { inclusive = true }
-                        }
+                ) {
+                    diecastViewModel.fetchDiecasts()
+                    navController.navigate(Screen.Dashboard.route) {
+                        popUpTo(Screen.Profile.route) { inclusive = true }
                     }
-                )
+                }
             }
         }
         composable(Screen.AddDiecast.route) {
